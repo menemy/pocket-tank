@@ -222,6 +222,9 @@ bool audio_port_init(i2c_master_bus_handle_t bus) {
 }
 
 void audio_port_play(int cue, int pitch_q8) {
+#ifdef BOARD_TRIVIAPOD
+    triviapod_haptic_cue(cue);
+#endif
     if (!s_ok) return;
     xSemaphoreTake(s_mx, portMAX_DELAY);
     bool started = audio_play(cue, pitch_q8, now_ms());

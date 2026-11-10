@@ -1,0 +1,21 @@
+# pocket-tank preflight 2026-11-10_0955 on /dev/cu.usbmodem1101
+I (268981) pocket-tank: battery: cable in at 100% (charging) - tI (530895) batlog: 7 samples (h:mm since the first | SoC | VBAT | bright | state | mA since previous)
+I (530896) batlog:     0:00 | 100% | 4158 mV | 153 | asleep | sleep
+I (530900) batlog:     0:00 | 100% | 4166 mV |   0 | asleep | nap       0.0 mA
+I (530907) batlog:     0:00 | 100% | 4158 mV | 153 | asleep | sleep     0.0 mA
+I (530914) batlog:     0:00 | 100% | 4168 mV |   0 | asleep | nap       0.0 mA
+I (530920) batlog:     0:00 | 100% | 4186 mV | 153 | awake  | boot      0.0 mA
+I (530927) batlog:     0:00 | 100% | 4192 mV | 153 | asleep | sleep     0.0 mA
+I (530934) batlog:     0:00 | 100% | 4180 mV |   0 | asleep | nap       0.0 mA
+I (530941) batlog:   awake:  0.0 h, 0 mAh -> 0 mA average
+I (530946) batlog:   asleep: 0.0 h, 0.0 mAh -> 0.00 mA average
+I (530952) batlog:   (SoC is 1% = 5 mAh; short awake windows are coarse, a night is not)
+I (535008) director: 0 pip    fry   age 0.2h size 0.51 hunger 1.2 energy 10.0 stress 0.0 curiosity 0.0 trust 4.3 social 0.797 (born 0.79) bold 0.138 (born 0.14) ms 13b  rest at 132,341
+I (535014) director: 1 kelp   fry   age 0.2h size 0.49 hunger 1.2 energy 10.0 stress 0.0 curiosity 0.0 trust 4.3 social 0.162 (born 0.16) bold 0.739 (born 0.73) ms 133  rest at 296,185
+I (535030) director: pellets 8 | trickle on | ravenous 0 | night idle 54s | veg 0.03 0.05 0.03 | algae cells 0/572 | courting no | arrival -
+I (535042) director: sand dollars 29 (earned 29) | shop: - | colonies 3 | 300 cm trimmed
+I (535050) director: bed 0 fronds (x from 60, pitch 12): 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03
+I (535061) director: bed 1 fronds (x from 340, pitch 12): 0.03 0.06 0.06 0.05 0.05
+I (535068) director: bed 2 fronds (x from 242, pitch 12): 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03
+I (535077) director: nursery bed -1 (a bed >= 0.12) | parked real tank: no (this IS the real tank)
+I (535085) director: battery 100% on the cable, full, VBAT 4172 mV | brightness 153/255 (level 100%)

@@ -4,7 +4,7 @@
  * read/modify/write holds the same lock and preserves unrelated pins. */
 #include "board_triviapod.h"
 #include "battery_port.h"
-#include "tank_events.h"
+#include "sounds.h"
 #include "board_pins.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -27,7 +27,7 @@ static SemaphoreHandle_t s_lock;
 static TaskHandle_t s_motor;
 static portMUX_TYPE s_haptic_lock = portMUX_INITIALIZER_UNLOCKED;
 static int64_t s_haptic_at;
-static bool s_ready, s_motor_enabled;
+static bool s_ready, s_motor_enabled, s_power_irq_seen;
 static bool s_key_armed, s_key_down, s_key_candidate, s_key_long;
 static int64_t s_key_changed, s_key_at;
 static unsigned s_clicks, s_click_credits;
@@ -81,7 +81,7 @@ static void motor_task(void *arg) {
         uint32_t ms;
         xTaskNotifyWait(0, UINT32_MAX, &ms, portMAX_DELAY);
         xSemaphoreTake(s_lock, portMAX_DELAY);
-        bool on = s_motor_enabled && write_reg(s_io, 0x1B, 0x8999, 2);
+        bool on = s_motor_enabled && write_reg(s_io, 0x1B, 0x8BFF, 2);
         xSemaphoreGive(s_lock);
         if (on) vTaskDelay(pdMS_TO_TICKS(ms > 120 ? 120 : ms));
         bool off = false;
@@ -98,21 +98,26 @@ void triviapod_vibrate(unsigned ms) {
     if (s_motor && ms) xTaskNotify(s_motor, ms > 120 ? 120 : ms, eSetValueWithoutOverwrite);
 }
 /* The synchronous tank event listener must never wait for I2C or a task lock. */
-void triviapod_haptic(int event) {
+void triviapod_haptic_cue(int cue) {
     unsigned ms;
-    switch (event) {
-    case TEV_FEED: ms = 25; break;
-    case TEV_SNIP: ms = 20; break;
-    case TEV_CONFIRM: ms = 35; break;
-    case TEV_WELCOME: ms = 60; break;
+    bool achievement = false;
+    switch (cue) {
+    case SND_FEED: ms = 45; break;
+    case SND_SNIP: ms = 45; break;
+    case SND_WIPE: ms = 35; break;
+    case SND_CARD_OPEN: ms = 45; break;
+    case SND_CONFIRM: ms = 60; break;
+    case SND_WELCOME: ms = 80; break;
+    case SND_MILESTONE: case SND_STAGE_UP: case SND_ARRIVAL:
+        ms = 100; achievement = true; break;
     default: return;
     }
     int64_t now = esp_timer_get_time();
     portENTER_CRITICAL(&s_haptic_lock);
-    bool ready = !s_haptic_at || now - s_haptic_at >= 200000;
+    bool ready = achievement || !s_haptic_at || now - s_haptic_at >= 200000;
     if (ready) s_haptic_at = now;
     portEXIT_CRITICAL(&s_haptic_lock);
-    if (ready) triviapod_vibrate(ms);
+    if (ready && s_motor) xTaskNotify(s_motor, ms, achievement ? eSetValueWithOverwrite : eSetValueWithoutOverwrite);
 }
 void triviapod_motor_stop(void) {
     if (!s_lock) return;
@@ -134,7 +139,6 @@ bool triviapod_panel_reset(void) {
 void triviapod_panel_sleep(void) {
     triviapod_motor_stop();
     triviapod_touch_sleep();
-    io_level(IO_TOUCH, 0);
 }
 bool triviapod_touch_init(void) { return write_reg(s_tp, 0xFE, 1, 1); }
 bool triviapod_touch_sleep(void) { return write_reg(s_tp, 0xE5, 3, 1); }
@@ -220,6 +224,7 @@ int battery_port_key_poll(void) {
     int64_t now = esp_timer_get_time();
     if (!s_ready || !read_reg(s_pm, 0x48, &state, 1)) { s_key_changed = now; s_key_at = 0; return 0; }
     bool irq_ok = read_reg(s_pm, 0x42, &irq, 1);
+    if (irq_ok && (irq & 5) && !gpio_get_level(T_PIN_PWR_IRQ)) s_power_irq_seen = true;
     if (irq_ok && (irq & 5) && write_reg(s_pm, 0x42, 0, 1))
         s_clicks += (irq & 1 ? 1 : 0) + (irq & 4 ? 2 : 0);
     static int last_state = -1;
@@ -255,6 +260,7 @@ int battery_port_key_poll(void) {
     if (!down && !s_key_down && !event && s_clicks) { s_clicks--; event = 1; }
     return event;
 }
+bool triviapod_power_irq_ready(void) { return s_power_irq_seen; }
 bool triviapod_wake_pressed(bool gpio_wakeup, int key_event) {
     return key_event || (gpio_wakeup && !gpio_get_level(T_PIN_BLUE));
 }
@@ -280,6 +286,11 @@ void battery_port_dump(void) {
     float frac; bool charging;
     bool ok = battery_port_read(&frac, &charging);
     ESP_LOGI(TAG, "M5PM1 battery: %s, %d mV, voltage estimate %d%%, state %d", ok ? "ok" : "unavailable", s_mv, (int)(s_fraction * 100), s_bat_state);
+    uint8_t key = 0, cfg = 0, irq = 0, mask = 0;
+    bool keys_ok = read_reg(s_pm, 0x48, &key, 1) && read_reg(s_pm, 0x49, &cfg, 1) &&
+                   read_reg(s_pm, 0x42, &irq, 1) && read_reg(s_pm, 0x45, &mask, 1);
+    ESP_LOGI(TAG, "M5PM1 key %s: status %02x cfg %02x irq %02x mask %02x GPIO12 %d irq-seen %d",
+             keys_ok ? "ok" : "unread", key, cfg, irq, mask, gpio_get_level(T_PIN_PWR_IRQ), s_power_irq_seen);
 }
 void battery_port_key_trace(int seconds) {
     for (int64_t end = esp_timer_get_time() + (int64_t)seconds * 1000000; esp_timer_get_time() < end;) {

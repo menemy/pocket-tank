@@ -23,6 +23,7 @@ typedef struct { uint64_t pin_bit_mask; int mode, pull_up_en; } gpio_config_t;
 #define pdPASS 1
 #define portMAX_DELAY UINT32_MAX
 #define eSetValueWithoutOverwrite 0
+#define eSetValueWithOverwrite 1
 static inline void host_log(const char *tag, const char *format, ...) { (void)tag; (void)format; }
 #define ESP_LOGI(...) host_log(__VA_ARGS__)
 #define ESP_LOGW(...) host_log(__VA_ARGS__)

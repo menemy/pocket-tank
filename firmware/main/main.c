@@ -531,6 +531,13 @@ static void enter_sleep_for(int wake_after_s) {
     ota_valid_now("a sleep");                  /* (before the save and any power cut below) */
     int pct0 = battery_pct(), mv0 = battery_port_vbat_mv();
     int64_t grace_us = wake_after_s > 0 ? DIRECTOR_GRACE_US : s_rtc ? SLEEP_GRACE_US : SLEEP_GRACE_CLOCKLESS_US;
+#ifdef BOARD_TRIVIAPOD
+    const int64_t key_poll_us = 50000;
+    const bool keep_polled_sleep = wake_after_s <= 0 && !triviapod_power_irq_ready();
+    if (keep_polled_sleep) ESP_LOGW(TAG, "power IRQ not observed on GPIO12: normal sleep stays in polled light sleep");
+#else
+    const int64_t key_poll_us = KEY_POLL_US;
+#endif
     ESP_LOGI(TAG, "sleep: save, panel off, %d s grace then %s | battery %d%% %d mV",
              (int)(grace_us / 1000000),
              wake_after_s > 0 ? "deep sleep with the timer" : night_powers_off() ? (s_rtc ? "PMIC power-off (the PWR key boots it)" : "PMIC power-off (the PWR key boots it; the internet gives the time back)")
@@ -561,7 +568,13 @@ static void enter_sleep_for(int wake_after_s) {
     bool pressed = false;
     for (;;) {
         int64_t left = grace_us - (esp_timer_get_time() - t0);
-        if (left <= 0) break;
+        if (left <= 0) {
+#ifdef BOARD_TRIVIAPOD
+            if (keep_polled_sleep) left = key_poll_us;
+            else
+#endif
+                break;
+        }
         wdt_feed();                             /* (each 1 s slice: the grace is no hang) */
         if (!boot_stuck) gpio_wakeup_enable(BTN_SLEEP, GPIO_INTR_LOW_LEVEL);
         if (pwr_sensed() && !pwr_stuck) gpio_wakeup_enable(PWR_SENSE, GPIO_INTR_HIGH_LEVEL);   /* the PWR key itself: no second of polling to wait out */
@@ -569,7 +582,7 @@ static void enter_sleep_for(int wake_after_s) {
         if (gpio_get_level(T_PIN_PWR_IRQ)) gpio_wakeup_enable(T_PIN_PWR_IRQ, GPIO_INTR_LOW_LEVEL);
 #endif
         esp_sleep_enable_gpio_wakeup();
-        esp_sleep_enable_timer_wakeup(left < KEY_POLL_US ? left : KEY_POLL_US);
+        esp_sleep_enable_timer_wakeup(left < key_poll_us ? left : key_poll_us);
         esp_light_sleep_start();
         esp_sleep_wakeup_cause_t why = esp_sleep_get_wakeup_cause();
         if (!boot_stuck) gpio_wakeup_disable(BTN_SLEEP);
@@ -1157,9 +1170,6 @@ static int stage_pitch(int fish) {                 /* fry high, elder low */
 }
 static void on_tank_event(int ev, int fish, void *ud) {
     (void)ud;
-#ifdef BOARD_TRIVIAPOD
-    triviapod_haptic(ev);
-#endif
     switch (ev) {
     case TEV_TAP:         audio_port_play(SND_TAP, AUDIO_PITCH_ONE); break;
     case TEV_FEED:        audio_port_play(SND_FEED, AUDIO_PITCH_ONE); break;

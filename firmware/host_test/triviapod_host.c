@@ -7,7 +7,7 @@
 #include "board_triviapod.h"
 #include "board_pins.h"
 #include "battery_port.h"
-#include "tank_events.h"
+#include "sounds.h"
 #include <assert.h>
 #include <math.h>
 #include <setjmp.h>
@@ -17,7 +17,8 @@ struct host_i2c { int addr; uint8_t reg[256]; };
 static struct host_i2c chips[128];
 static int64_t clock_us = 1000;
 static int pm_failures = 2, pm_writes, failures, lock_depth, notifications;
-static unsigned requested_ms, motor_delay;
+static unsigned requested_ms, motor_delay, motor_peak;
+static int notify_action;
 static uint64_t configured_pins;
 static int keys[49];
 static void (*motor_fn)(void *);
@@ -35,7 +36,7 @@ int xTaskCreate(void (*fn)(void *), const char *name, unsigned stack, void *arg,
     (void)name; (void)stack; (void)arg; (void)priority; motor_fn = fn; *out = (void *)2; return pdPASS;
 }
 int xTaskNotify(TaskHandle_t task, uint32_t value, int action) {
-    (void)task; (void)action; requested_ms = value; notifications++; return 1;
+    (void)task; notify_action = action; requested_ms = value; notifications++; return 1;
 }
 int xTaskNotifyWait(uint32_t clear, uint32_t exit_bits, uint32_t *out, unsigned wait) {
     (void)clear; (void)exit_bits; (void)wait;
@@ -52,6 +53,7 @@ int i2c_master_transmit(i2c_master_dev_handle_t d, const void *buf, size_t n, in
     (void)timeout; const uint8_t *b = buf;
     if (d->addr == 0x6E && b[0] == 9) { pm_writes++; if (pm_failures-- > 0) return -1; }
     if (d->addr == 0x4F && b[0] == 5) assert(lock_depth || !motor_fn);
+    if (d->addr == 0x4F && b[0] == 0x1B && n == 3 && (b[1] || b[2])) motor_peak = b[1] | b[2] << 8;
     memcpy(d->reg + b[0], b + 1, n - 1); return 0;
 }
 static void mv(int reg, int n) { chips[0x6E].reg[reg] = n & 255; chips[0x6E].reg[reg+1] = n >> 8; }
@@ -75,18 +77,25 @@ int main(void) {
     triviapod_vibrate(500); CHECK(requested_ms == 120 && notifications == 1);
     pulse(); CHECK(motor_delay == 120 && chips[0x4F].reg[0x1B] == 0 && chips[0x4F].reg[0x1C] == 0);
     CHECK(chips[0x4F].reg[6] & 2); /* motor does not change the amplifier */
+    CHECK(motor_peak == 0x8BFF);
     triviapod_panel_sleep(); pulse(); CHECK(motor_delay == 0);
+    CHECK(chips[0x4F].reg[5] & 8); /* CST820 sleeps by command with reset released */
     CHECK(triviapod_panel_reset()); pulse(); CHECK(motor_delay == 120);
     int n_haptic = notifications;
     clock_us += 200000;
-    triviapod_haptic(TEV_FEED); CHECK(notifications == ++n_haptic && requested_ms == 25);
-    triviapod_haptic(TEV_SNIP); CHECK(notifications == n_haptic);
-    clock_us += 199999; triviapod_haptic(TEV_SNIP); CHECK(notifications == n_haptic);
-    clock_us++; triviapod_haptic(TEV_SNIP); CHECK(notifications == ++n_haptic && requested_ms == 20);
-    clock_us += 200000; triviapod_haptic(TEV_CONFIRM); CHECK(notifications == ++n_haptic && requested_ms == 35);
-    clock_us += 200000; triviapod_haptic(TEV_WELCOME); CHECK(notifications == ++n_haptic && requested_ms == 60);
+    triviapod_haptic_cue(SND_FEED); CHECK(notifications == ++n_haptic && requested_ms == 45);
+    triviapod_haptic_cue(SND_SNIP); CHECK(notifications == n_haptic);
+    clock_us += 199999; triviapod_haptic_cue(SND_SNIP); CHECK(notifications == n_haptic);
+    clock_us++; triviapod_haptic_cue(SND_SNIP); CHECK(notifications == ++n_haptic && requested_ms == 45);
+    clock_us += 200000; triviapod_haptic_cue(SND_CONFIRM); CHECK(notifications == ++n_haptic && requested_ms == 60);
+    clock_us += 200000; triviapod_haptic_cue(SND_WELCOME); CHECK(notifications == ++n_haptic && requested_ms == 80);
+    clock_us += 200000; triviapod_haptic_cue(SND_CARD_OPEN); CHECK(notifications == ++n_haptic && requested_ms == 45);
+    clock_us += 200000; triviapod_haptic_cue(SND_WIPE); CHECK(notifications == ++n_haptic && requested_ms == 35);
+    triviapod_haptic_cue(SND_MILESTONE); CHECK(notifications == ++n_haptic && requested_ms == 100 && notify_action == eSetValueWithOverwrite);
+    triviapod_haptic_cue(SND_STAGE_UP); CHECK(notifications == ++n_haptic && requested_ms == 100);
+    triviapod_haptic_cue(SND_ARRIVAL); CHECK(notifications == ++n_haptic && requested_ms == 100);
     clock_us += 200000;
-    triviapod_haptic(TEV_EAT); triviapod_haptic(TEV_BUBBLES); triviapod_haptic(TEV_WHEEL_TICK);
+    triviapod_haptic_cue(SND_EAT); triviapod_haptic_cue(SND_BUBBLES); triviapod_haptic_cue(SND_WHEEL_TICK);
     CHECK(notifications == n_haptic);
     mv(0x22, 3900); mv(0x24, 5000); chips[0x6E].reg[0x12] = 0;
     float frac; bool charging;
@@ -102,6 +111,7 @@ int main(void) {
     CHECK(triviapod_touch_read(&x, &y, &down) && down && x == 356 && y == 200);
     tp[3] = 2; CHECK(!triviapod_touch_read(&x, &y, &down) && !down && x == 356 && y == 200);
     tp[2] = 0; CHECK(triviapod_touch_read(&x, &y, &down) && !down);
+    CHECK(!triviapod_power_irq_ready());
     battery_port_key_init(); CHECK(poll(40, false, 0) == 0);
     CHECK(poll(10, true, 0) == 0); CHECK(poll(40, true, 0) == 0);
     CHECK(poll(10, false, 0) == 0); CHECK(poll(40, false, 0) == 1);
@@ -111,6 +121,8 @@ int main(void) {
     CHECK(poll(10, true, 0) == 0); CHECK(poll(40, true, 0) == 0);
     CHECK(poll(1500, true, 0) == 2); CHECK(poll(100, true, 0) == 0);
     CHECK(poll(10, false, 0) == 0); CHECK(poll(40, false, 0) == 0);
+    CHECK(poll(600, false, 0) == 0); /* a long release's unused click credit expires */
+    keys[12] = 0; CHECK(poll(1000, false, 1) == 1 && triviapod_power_irq_ready()); keys[12] = 1;
     keys[1] = 0; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000;
     CHECK(!triviapod_feed_pressed(clock_us)); /* held at boot cannot feed */
     keys[1] = 1; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000; CHECK(!triviapod_feed_pressed(clock_us));

@@ -72,9 +72,13 @@ fit and director calibration controls remain available for measurement.
   debounced release handles short presses even without a click IRQ; a
   delayed IRQ for that same release is consumed once. GPIO12's
   active-low click interrupt and the blue key can wake deep sleep.
-- Haptics: feeding pellets gives 25 ms, a plant cut 20 ms, CONFIRM 35 ms,
-  and the first-run WELCOME 60 ms. Requests are at least 200 ms apart;
-  eating, bubbles and letter-wheel ticks produce no vibration.
+- Haptics: feeding, a plant cut and opening a fish card give 45 ms;
+  wiping glass 35 ms; CONFIRM 60 ms; WELCOME 80 ms; each announced
+  achievement, growth stage and new arrival 100 ms. Motor PWM is 75%.
+  Ordinary requests are at least 200 ms apart; achievement cues replace
+  a pending ordinary pulse so a just-earned badge is not lost to the
+  feeding or trimming cue that earned it. Eating, bubbles and letter-wheel
+  ticks produce no vibration. Haptics remain active with sound muted.
   Pulse requests are capped at 120 ms; sleep disables further pulses until
   the panel wakes. Failed motor-stop writes are retried with new pulses disabled.
 
@@ -91,7 +95,8 @@ port. The picture starts upright. The existing clockless-board path keeps
 ESP time through deep sleep and can synchronize over Wi-Fi; time across
 a complete power loss needs that synchronization. The mic is not used by
 Pocket Tank. Standby current has not been measured; the OLED rail remains
-on in sleep, with the panel asleep and touch held in reset.
+on in sleep, with the panel and CST820 asleep by command. The touch reset remains released,
+as in the working Muse board path.
 
 ## Validation
 
@@ -141,3 +146,10 @@ itself has not been run on this machine.
 The owner corrected the case controls on 2026-11-10: blue at 10 o’clock,
 green at 1 o’clock, red power at 7 o’clock. These replace the earlier
 color/position descriptions in the hardware handoff.
+
+Normal TriviaPOD sleep polls the live power key every 50 ms. Until a real
+PMIC key IRQ is observed with GPIO12 low, it stays in light sleep rather
+than entering a deep state from which the red key might not wake it.
+Standby current remains unmeasured. The clockless board’s usual one-hour
+grace/deep-sleep path is available once that IRQ path has been observed;
+explicit director timer tests remain available.
