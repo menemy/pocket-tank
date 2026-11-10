@@ -126,7 +126,8 @@ TriviaPOD, with a complete pre-install 32 MiB backup. Runtime logs show about
 25 fps after the boot show, on-device advisor decisions, M5PM1 battery
 readings, and ES8311 playback power-up/idle transitions. The owner confirmed
 red-key single-press sleep/wake and the stronger motor feedback on build
-466a489. Glass-wiping haptics were then removed at the owner’s request.
+466a489. Glass-wiping haptics were then removed at the owner’s request; build
+9cf8e36 was flash-hash verified and its running version confirmed over USB.
 Precise touch calibration, sound levels, USB charge transitions and standby
 current have not been measured.
 QEMU was not run.

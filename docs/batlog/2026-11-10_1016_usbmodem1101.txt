@@ -1,0 +1,16 @@
+# pocket-tank preflight 2026-11-10_1016 on /dev/cu.usbmodem1101
+I (192788) advisor: prof ms: matmul 2543 attn 661 norm/quant 115I (384201) batlog: 3 samples (h:mm since the first | SoC | VBAT | bright | state | mA since previous)
+I (384202) batlog:     0:00 | 100% | 4174 mV | 153 | asleep | sleep
+I (384205) batlog:     0:00 | 100% | 4170 mV |   0 | asleep | nap
+I (384212) batlog:     0:03 | 100% | 4168 mV | 255 | awake  | boot      0.0 mA
+I (384219) batlog:   asleep: 0.1 h, 0.0 mAh -> 0.00 mA average
+I (384224) batlog:   (SoC is 1% = 5 mAh; short awake windows are coarse, a night is not)
+I (388239) director: 0 pip    fry   age 0.4h size 0.51 hunger 4.7 energy 7.2 stress 1.3 curiosity 0.5 trust 3.9 social 0.799 (born 0.79) bold 0.140 (born 0.14) ms 13b  follow_friend at 309,126
+I (388245) director: 1 kelp   fry   age 0.4h size 0.50 hunger 2.7 energy 7.1 stress 1.3 curiosity 0.2 trust 3.9 social 0.162 (born 0.16) bold 0.741 (born 0.73) ms 133  explore at 317,113
+I (388261) director: pellets 0 | trickle on | ravenous 0 | day idle 162s | veg 0.03 0.03 0.03 | algae cells 1/572 | courting no | arrival -
+I (388273) director: sand dollars 29 (earned 29) | shop: - | colonies 4 | 307 cm trimmed
+I (388282) director: bed 0 fronds (x from 60, pitch 12): 0.04 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03
+I (388292) director: bed 1 fronds (x from 340, pitch 12): 0.03 0.03 0.03 0.03 0.03
+I (388300) director: bed 2 fronds (x from 242, pitch 12): 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03
+I (388308) director: nursery bed -1 (a bed >= 0.12) | parked real tank: no (this IS the real tank)
+I (388317) director: battery 100% on the cable, full, VBAT 4178 mV | brightness 255/255 (level 100%)
