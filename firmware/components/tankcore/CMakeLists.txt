@@ -27,3 +27,7 @@ endif()
 if(CONFIG_POCKET_TANK_SQUARE)  # the square's 480 x 480 tank
     target_compile_definitions(${COMPONENT_LIB} PUBLIC TANK_SQUARE)
 endif()
+
+if(CONFIG_POCKET_TANK_TRIVIAPOD)
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC BOARD_TRIVIAPOD)
+endif()

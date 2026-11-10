@@ -27,6 +27,9 @@
 #include "display_port.h"
 #include "update.h"
 #include "board_pins.h"
+#ifdef BOARD_TRIVIAPOD
+#include "board_triviapod.h"
+#endif
 #include "tank.h"
 #include "collection.h"
 #include "gift.h"
@@ -143,6 +146,9 @@ static bool cst9217_init(void) {
  * grace left it in reset, so it is let out and given its boot first. Only a
  * reset brings it back: the wake is a reboot, and cst9217_init pulses it. */
 bool touch_port_deep_sleep(void) {
+#ifdef BOARD_TRIVIAPOD
+    return triviapod_touch_sleep();
+#endif
     if (!s_cst) return false;
     gpio_set_level(cst_rst(), 1); vTaskDelay(pdMS_TO_TICKS(150));
     static const uint8_t open[2] = { 0xD1, 0x1E }, dbg[2] = { 0xD1, 0x01 }, slp[2] = { 0xD1, 0x05 }, where[2] = { 0x00, 0x02 };
@@ -268,6 +274,16 @@ static bool ft3168_read(uint16_t *x, uint16_t *y) {
 }
 /* one read of the glass, whichever chip: true while a finger is down, in panel px */
 static bool panel_read(uint16_t *x, uint16_t *y) {
+#ifdef BOARD_TRIVIAPOD
+    static uint16_t last_x, last_y;
+    static press_rest_t rest;
+    bool finger = false;
+    int64_t now = esp_timer_get_time();
+    bool answered = triviapod_touch_read(&last_x, &last_y, &finger);
+    if (answered && finger) s_seen_us = now;
+    *x = last_x; *y = last_y;
+    return press_rest_step(&rest, now, answered, answered && finger, CST_LIFT_US);
+#endif
     if (s_cst) return cst9217_read(x, y);
     if (s_ft) return ft3168_read(x, y);
     if (!s_tp) return false;
@@ -279,6 +295,12 @@ static bool panel_read(uint16_t *x, uint16_t *y) {
 }
 
 bool touch_port_init(void) {
+#ifdef BOARD_TRIVIAPOD
+    s_bias_y = 0;
+    bool ok = triviapod_touch_init();
+    ESP_LOGI(TAG, "CST820 %s (raw 466 px coordinates)", ok ? "ready" : "unavailable");
+    return ok;
+#endif
     if (board_is_round() || board_is_square()) return cst9217_init();
     if (board_is_watch()) return ft3168_init();
     esp_lcd_panel_io_handle_t io;
@@ -410,6 +432,10 @@ static void cal_point(float rx, float ry, float *tx, float *ty) {               
     /* the viewer's "down" and "right" on the upright glass: turned over they are its up and left, on a side
        (0.3.9.3) its left / right and down / up (tank_quarter_from_upright) */
     static const int8_t DOWN[4][2] = { { 0, 1 }, { -1, 0 }, { 0, -1 }, { 1, 0 } }, RIGHT[4][2] = { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 } };
+#ifdef BOARD_TRIVIAPOD
+    *tx = rx; *ty = ry - s_bias_y;
+    return;
+#endif
     float land = (float)s_bias_y + (board_is_round() || board_is_v2() || board_is_square() ? CAL_LAND : 0);
     float side = board_is_watch() ? CAL_W_LAND_X : board_is_square() ? CAL_S_LAND_X : 0;
     rx -= land * DOWN[s_q][0] + side * RIGHT[s_q][0];   /* the finger's own low landing is the viewer's "down"; on a wrist, and the */
@@ -582,7 +608,9 @@ void touch_port_poll(tank_t *t) {
         }
         gen = t->roster_shift; seen = true;
     }
+#ifndef BOARD_TRIVIAPOD
     if (!s_tp && !s_cst && !s_ft) return;
+#endif
     uint16_t x[1], y[1];
     bool touched = panel_read(x, y);
     /* portrait panel (px,py) -> landscape tank (tx,ty): tx = TANK_W-1-py, ty = px;

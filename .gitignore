@@ -39,3 +39,10 @@ tools/boards.local.sh
 sim/build-square/
 sim/fishsim-square
 sim/build-arm*/
+
+# local community-port builds, reports and device backup
+firmware/build-triviapod/
+firmware/build-check-*/
+firmware/host_test/decide_host
+work_in_progress/
+firmware/host_test/triviapod_host

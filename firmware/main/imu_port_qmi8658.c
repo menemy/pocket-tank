@@ -98,6 +98,12 @@ static bool imu_reset_config_once(void) {
 }
 
 bool imu_port_init(i2c_master_bus_handle_t bus) {
+#ifdef BOARD_TRIVIAPOD
+    (void)bus;
+    ESP_LOGI(TAG, "TriviaPOD BMI270 orientation not enabled; fixed upright");
+    return false;
+#endif
+
     if (!bus) return false;
     uint8_t addr = QMI8658_ADDR;
     if (i2c_master_probe(bus, addr, 50) != ESP_OK) {

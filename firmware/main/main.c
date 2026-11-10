@@ -72,7 +72,12 @@
  * AXP2101's PWRON, polled over I2C): the night mode is a PMIC power-off,
  * from which ONLY that key (or USB) can bring the board back, so it has to
  * be the one key the keeper ever presses - press to sleep, press to wake. */
+#ifdef BOARD_TRIVIAPOD
+#include "board_triviapod.h"
+#define BTN_SLEEP GPIO_NUM_1
+#else
 #define BTN_SLEEP GPIO_NUM_0
+#endif
 static bool s_pmic;                        /* an AXP2101 answered: the PWR key exists, power-off is real */
 static bool s_rtc;                         /* an RTC chip answered: the wall clock survives a PMIC power-off. Without one
                                               (the round 1.75C) the night is a DEEP sleep - the ESP32's own clock keeps
@@ -560,11 +565,17 @@ static void enter_sleep_for(int wake_after_s) {
         wdt_feed();                             /* (each 1 s slice: the grace is no hang) */
         if (!boot_stuck) gpio_wakeup_enable(BTN_SLEEP, GPIO_INTR_LOW_LEVEL);
         if (pwr_sensed() && !pwr_stuck) gpio_wakeup_enable(PWR_SENSE, GPIO_INTR_HIGH_LEVEL);   /* the PWR key itself: no second of polling to wait out */
+#ifdef BOARD_TRIVIAPOD
+        if (gpio_get_level(T_PIN_PWR_IRQ)) gpio_wakeup_enable(T_PIN_PWR_IRQ, GPIO_INTR_LOW_LEVEL);
+#endif
         esp_sleep_enable_gpio_wakeup();
         esp_sleep_enable_timer_wakeup(left < KEY_POLL_US ? left : KEY_POLL_US);
         esp_light_sleep_start();
         esp_sleep_wakeup_cause_t why = esp_sleep_get_wakeup_cause();
         if (!boot_stuck) gpio_wakeup_disable(BTN_SLEEP);
+#ifdef BOARD_TRIVIAPOD
+        gpio_wakeup_disable(T_PIN_PWR_IRQ);
+#endif
         if (pwr_sensed() && !pwr_stuck) gpio_wakeup_disable(PWR_SENSE);
         /* wake sources are STICKY in ESP-IDF (s_config.wakeup_triggers): the
          * grace's timer would otherwise follow us into stage 2 and boot the
@@ -572,7 +583,8 @@ static void enter_sleep_for(int wake_after_s) {
          * two-stage change lasted exactly 3 minutes). Drop everything each
          * slice, then arm stage 2's own. */
         esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
-        if (why == ESP_SLEEP_WAKEUP_GPIO || battery_port_key_poll()) { pressed = true; break; }
+        int wake_key = battery_port_key_poll();
+        if (why == ESP_SLEEP_WAKEUP_GPIO || wake_key) { pressed = true; break; }
     }
     if (pressed) {                              /* a quick wake: resume in place */
         keys_up_wait("the wake");                /* the wake press, still down (stuck: the tank comes back anyway) */
@@ -628,6 +640,14 @@ int device_sleep_cfg(int mask) {
 }
 static void deep_sleep_now(int wake_after_s) {
     ota_valid_now("a sleep");
+#ifdef BOARD_TRIVIAPOD
+    /* M5PM1 IRQ is active low, unlike Waveshare's active-high key sense. */
+    battery_port_key_clear();
+    rtc_gpio_pullup_en(T_PIN_PWR_IRQ); rtc_gpio_pulldown_dis(T_PIN_PWR_IRQ);
+    rtc_gpio_pullup_en(BTN_SLEEP); rtc_gpio_pulldown_dis(BTN_SLEEP);
+    esp_sleep_enable_ext1_wakeup((1ULL << T_PIN_PWR_IRQ) | (1ULL << BTN_SLEEP), ESP_EXT1_WAKEUP_ANY_LOW);
+    ESP_LOGI(TAG, "deep sleep (power click or blue rim key wakes)");
+#else
     if (pwr_sensed()) {                         /* the PWR key's sense line (driven both ways by the board: no pull) wakes it,
                                                    as ext1 - the RTC peripherals can power down, which ext0 would keep up */
         int cfg = sleep_cfg();
@@ -649,6 +669,7 @@ static void deep_sleep_now(int wake_after_s) {
         rtc_gpio_pullup_en(BTN_SLEEP); rtc_gpio_pulldown_dis(BTN_SLEEP);
         esp_sleep_enable_ext0_wakeup(BTN_SLEEP, 0);
     }
+#endif
     if (wake_after_s > 0) esp_sleep_enable_timer_wakeup((int64_t)wake_after_s * 1000000);
     audio_port_deep_sleep_pins();
     gpio_deep_sleep_hold_en();
@@ -1125,6 +1146,9 @@ static int stage_pitch(int fish) {                 /* fry high, elder low */
 }
 static void on_tank_event(int ev, int fish, void *ud) {
     (void)ud;
+#ifdef BOARD_TRIVIAPOD
+    if (ev == TEV_CONFIRM || ev == TEV_WELCOME) triviapod_vibrate(35);
+#endif
     switch (ev) {
     case TEV_TAP:         audio_port_play(SND_TAP, AUDIO_PITCH_ONE); break;
     case TEV_FEED:        audio_port_play(SND_FEED, AUDIO_PITCH_ONE); break;
@@ -1344,6 +1368,12 @@ static void tank_task(void *arg) {
         if (slept_from) sleep_us += now - slept_from;
         sleep_button_poll(now);
         pwr_key_poll(now);
+#ifdef BOARD_TRIVIAPOD
+        if (triviapod_feed_pressed(now) && !setup_active() && !touch_port_confirm_up() && !adv_up() &&
+            !touch_port_milestones() && !touch_port_settings() && !touch_port_updates() && !touch_port_shop() &&
+            !touch_port_collection() && !touch_port_battery() && !touch_port_shelf())
+            tank_feed(&tank, tank.feed_spot_x >= 0 ? tank.feed_spot_x : TANK_W * 0.5f, 3);
+#endif
         imu_port_poll(now);
         if (imu_port_moving()) audio_port_prewarm();   /* in a hand: the codec stays warm (docs/AUDIO.md) */
         if (imu_port_handled()) tank_handled(&tank);   /* ... and the light stays on (two polls of motion: a bump on the desk is not a pick-up) */

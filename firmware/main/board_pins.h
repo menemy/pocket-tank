@@ -51,6 +51,20 @@
  * reset never driven, and the 1.8's rail trim cut ALDO1 - a dark glass. */
 #ifndef BOARD_PINS_H
 #define BOARD_PINS_H
+/* TriviaPOD pins: Muse board_m5stack_triviapod.c / M5Unified StopWatch. */
+#ifdef BOARD_TRIVIAPOD
+#define PIN_LCD_CS        39
+#define PIN_LCD_PCLK      40
+#define PIN_LCD_DATA0     41
+#define PIN_LCD_DATA1     42
+#define PIN_LCD_DATA2     46
+#define PIN_LCD_DATA3     45
+#define PIN_I2C_SDA       47
+#define PIN_I2C_SCL       48
+#define T_PIN_BLUE        1
+#define T_PIN_YELLOW      2
+#define T_PIN_PWR_IRQ     12
+#else
 #define PIN_LCD_CS        12
 #define PIN_LCD_PCLK      11
 #define PIN_LCD_DATA0     4
@@ -59,6 +73,7 @@
 #define PIN_LCD_DATA3     7
 #define PIN_I2C_SDA       15
 #define PIN_I2C_SCL       14
+#endif
 #define PIN_TP_INT        21
 #define I2C_ADDR_EXPANDER 0x20     /* TCA9554: bit0 LCD_RST, bit1 DSI_PWR_EN, bit2 TOUCH_RST, bit7 SD_CS */
 #define I2C_ADDR_FT3168   0x38     /* V1 touch */
@@ -68,7 +83,11 @@
 #define V2_PANEL_X_GAP    0x10
 
 /* ---- the 1.75C ---- */
+#ifdef BOARD_TRIVIAPOD
+#define R_PIN_LCD_PCLK    40
+#else
 #define R_PIN_LCD_PCLK    38
+#endif
 #define R_PIN_LCD_RST     1
 #define R_PIN_LCD_TE      13       /* unused */
 #define R_PIN_TP_RST      2

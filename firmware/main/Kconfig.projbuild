@@ -1,4 +1,11 @@
 menu "pocket-tank"
+    config POCKET_TANK_TRIVIAPOD
+        bool "M5Stack TriviaPOD community port (466 px round CO5300)"
+        default n
+        select POCKET_TANK_ROUND
+        help
+            TriviaPOD TP-01-A: M5PM1 power, M5IOE1 expander and CST820 touch.
+            Build with sdkconfig.defaults;sdkconfig.triviapod in its own directory.
     config POCKET_TANK_DISPLAY_SH8601
         bool "Drive the Waveshare 1.8in AMOLED (SH8601 / CO5300 over QSPI)"
         default n

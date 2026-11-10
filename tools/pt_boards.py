@@ -11,6 +11,7 @@ import os, sys
 # id (version.h PT_BOARD), the maker's name, the sdkconfig fragment on top of
 # sdkconfig.defaults (None = the 1.8, the default build)
 BOARDS = [
+    ("triviapod", "M5Stack TriviaPOD", "sdkconfig.triviapod"),
     ("amoled18",  "Waveshare ESP32-S3-Touch-AMOLED-1.8",  None),
     ("round175c", "Waveshare ESP32-S3-Touch-AMOLED-1.75C", "sdkconfig.round"),
     ("watch206",  "Waveshare ESP32-S3-Touch-AMOLED-2.06",  "sdkconfig.watch"),

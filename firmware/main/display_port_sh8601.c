@@ -22,6 +22,9 @@
  * is up is the panel's MADCTL (S_MADCTL; director `madctl` to try another). */
 #include "display_port.h"
 #include "board_pins.h"
+#ifdef BOARD_TRIVIAPOD
+#include "board_triviapod.h"
+#endif
 #include "tank.h"
 #include "render.h"
 #include "driver/spi_master.h"
@@ -219,19 +222,45 @@ bool board_is_square(void) { return s_square; }
 static volatile bool s_probed;                  /* the chips were asked (display_port_init) */
 bool board_port_probed(void) { return s_probed; }
 const char *board_port_hw(void) {
+#ifdef BOARD_TRIVIAPOD
+    return s_round ? "triviapod" : NULL;
+#else
     return s_square ? "square216" : s_watch ? "watch206" : s_round ? "round175c" : s_expander ? "amoled18" : NULL;
+#endif
 }
-int  board_pwr_sense_pin(void) { return s_175 ? -1 : s_round ? R_PIN_PWR_SENSE : s_watch ? W_PIN_PWR_SENSE : s_square ? S_PIN_PWR_SENSE : -1; }
+int  board_pwr_sense_pin(void) {
+#ifdef BOARD_TRIVIAPOD
+    return -1;
+#else
+    return s_175 ? -1 : s_round ? R_PIN_PWR_SENSE : s_watch ? W_PIN_PWR_SENSE : s_square ? S_PIN_PWR_SENSE : -1;
+#endif
+}
 void display_port_frame_origin(int *px, int *py) { *px = s_fx; *py = s_fy; }
 /* the boards whose resets are GPIOs (the 1.75C, the watch): the pads held through a deep sleep */
 typedef struct { gpio_num_t pin; int level; } held_t;
+#ifndef BOARD_TRIVIAPOD
 static const held_t ROUND_HELD[] = { { R_PIN_LCD_RST, 1 }, { R_PIN_TP_RST, 0 }, { PIN_LCD_CS, 1 } };
+#endif
 static const held_t WATCH_HELD[] = { { W_PIN_LCD_RST, 1 }, { W_PIN_TP_RST, 0 }, { PIN_LCD_CS, 1 } };
 static const held_t SQUARE_HELD[] = { { S_PIN_LCD_RST, 1 }, { S_PIN_TP_RST, 0 }, { PIN_LCD_CS, 1 } };
+#ifndef BOARD_TRIVIAPOD
 static const held_t B175_HELD[] = { { B_PIN_LCD_RST, 1 }, { B_PIN_TP_RST, 0 }, { PIN_LCD_CS, 1 } };
+#endif
 #define HELD_N 3
-static const held_t *held_pins(void) { return s_175 ? B175_HELD : s_round ? ROUND_HELD : s_watch ? WATCH_HELD : s_square ? SQUARE_HELD : NULL; }
-static gpio_num_t pin_lcd_rst(void) { return s_175 ? B_PIN_LCD_RST : s_round ? R_PIN_LCD_RST : s_watch ? W_PIN_LCD_RST : s_square ? S_PIN_LCD_RST : GPIO_NUM_NC; }
+static const held_t *held_pins(void) {
+#ifdef BOARD_TRIVIAPOD
+    return NULL;
+#else
+    return s_175 ? B175_HELD : s_round ? ROUND_HELD : s_watch ? WATCH_HELD : s_square ? SQUARE_HELD : NULL;
+#endif
+}
+static gpio_num_t pin_lcd_rst(void) {
+#ifdef BOARD_TRIVIAPOD
+    return GPIO_NUM_NC;
+#else
+    return s_175 ? B_PIN_LCD_RST : s_round ? R_PIN_LCD_RST : s_watch ? W_PIN_LCD_RST : s_square ? S_PIN_LCD_RST : GPIO_NUM_NC;
+#endif
+}
 static gpio_num_t pin_tp_rst(void)  { return s_175 ? B_PIN_TP_RST : s_round ? R_PIN_TP_RST : s_square ? S_PIN_TP_RST : W_PIN_TP_RST; }
 static void dcs(uint8_t cmd, const uint8_t *param, size_t n);
 void display_port_deep_sleep_pins(bool tp_awake_high) {
@@ -340,6 +369,17 @@ void board_sd_select(bool on) {
 
 /* the 1.75C's init, from Waveshare's BSP: the 1.8's sequence behind two
  * page-0x20 writes, the window 466 wide from the panel's 6 px gap */
+#ifdef BOARD_TRIVIAPOD
+/* M5GFX Panel_StopWatch sequence; keep brightness zero until the first frame. */
+static const sh8601_lcd_init_cmd_t round_init_cmds[] = {
+    {0x11, NULL, 0, 150},
+    {0xC4, (uint8_t[]){0x80}, 1, 0},
+    {0x3A, (uint8_t[]){0x55}, 1, 0},
+    {0x36, (uint8_t[]){0x00}, 1, 0},
+    {0x53, (uint8_t[]){0x20}, 1, 0},
+    {0x51, (uint8_t[]){0x00}, 1, 0},
+};
+#else
 static const sh8601_lcd_init_cmd_t round_init_cmds[] = {
     {0xFE, (uint8_t[]){0x20}, 1, 0},
     {0x19, (uint8_t[]){0x10}, 1, 0},
@@ -357,6 +397,7 @@ static const sh8601_lcd_init_cmd_t round_init_cmds[] = {
     {0x29, NULL, 0, 0},
 };
 
+#endif
 /* the watch's init, from Waveshare's BSP (esp32_s3_touch_amoled_2_06): sleep
  * out first, the tear line at row 465, the window 410 wide from the panel's
  * 22 px gap, 502 tall; lit at brightness 0 and raised once the picture is on */
@@ -437,6 +478,11 @@ bool display_port_init(void) {
     i2c_master_bus_config_t bus = { .i2c_port = I2C_NUM_0, .sda_io_num = PIN_I2C_SDA, .scl_io_num = PIN_I2C_SCL,
         .clk_source = I2C_CLK_SRC_DEFAULT, .glitch_ignore_cnt = 7, .flags.enable_internal_pullup = true };
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus, &s_i2c));
+#ifdef BOARD_TRIVIAPOD
+    s_round = triviapod_init(s_i2c);
+    if (!s_round) { s_probed = true; ESP_LOGE(TAG, "TriviaPOD power/reset setup failed: panel stays dark"); return false; }
+    const bool mic = true;
+#else
     /* which board: the 1.8 has the TCA9554 expander; the 1.75C has none, and
        an ES7210 the 1.8 lacks. Neither, with the PMIC answering = the 1.8's
        path, as before. Nothing at all = a dead bus (the 1.75C with A3V3 off
@@ -456,6 +502,7 @@ bool display_port_init(void) {
         s_square = probe(I2C_ADDR_CST9217);
         if (s_square) s_watch = false;
     }
+#endif
     s_probed = true;                                 /* board_port_hw() means it from here (the installer's question waits for it) */
     if (!s_expander && !mic && !probe(0x34)) {
         ESP_LOGE(TAG, "nothing answers on the I2C bus (no expander, no ES7210, no PMIC): the board cannot be told, the panel stays dark - "
@@ -491,11 +538,16 @@ bool display_port_init(void) {
         watch_rails_on();
         s_pw = W_PANEL_W; s_ph = W_PANEL_H;
     } else if (s_round) {
+#ifdef BOARD_TRIVIAPOD
+        ESP_LOGI(TAG, "board: M5Stack TriviaPOD (CO5300 466x466 / CST820)");
+        s_pw = R_PANEL; s_ph = R_PANEL;
+#else
         if (s_175) ESP_LOGI(TAG, "board: the ROUND 1.75 / 1.75-B (CO5300 466x466 / CST9217) - an expander at 0x%02x AND an ES7210 at 0x%02x; resets on %d / %d (BETA)",
                             I2C_ADDR_EXPANDER, I2C_ADDR_ES7210, B_PIN_LCD_RST, B_PIN_TP_RST);
         else ESP_LOGI(TAG, "board: the ROUND 1.75C (CO5300 466x466 / CST9217) - no expander, an ES7210 at 0x%02x", I2C_ADDR_ES7210);
         for (size_t i = 0; i < HELD_N; i++) gpio_hold_dis(held_pins()[i].pin);   /* a deep sleep's holds end here */
         for (size_t i = 0; i < sizeof ROUND_BUS / sizeof ROUND_BUS[0]; i++) gpio_hold_dis(ROUND_BUS[i]);   /* ... and the QSPI lines' (sleepcfg 8) */
+#endif
         for (int ky = 0; ky < 4; ky++) for (int kx = 0; kx < 4; kx++) {       /* FIT's area weights: 25ths, as 32nds that sum to 32 */
             int w[4] = { (4 - ky) * (4 - kx), (4 - ky) * (1 + kx), (1 + ky) * (4 - kx), (1 + ky) * (1 + kx) }, sum = 0, big = 0;
             for (int i = 0; i < 4; i++) { w[i] = (w[i] * 32 + 12) / 25; sum += w[i]; if (w[i] > w[big]) big = i; }
@@ -566,6 +618,11 @@ bool display_port_init(void) {
 void display_port_sleep(void) {
     display_port_flush_wait(NULL);                  /* a frame on its way out first */
     if (s_panel) esp_lcd_panel_disp_on_off(s_panel, false);
+#ifdef BOARD_TRIVIAPOD
+    dcs(0x10, NULL, 0);
+    triviapod_panel_sleep();
+    return;
+#endif
     if (held_pins()) { dcs(0x10, NULL, 0); gpio_set_level(pin_tp_rst(), 0); return; }   /* ... and the touch chip held in reset, as the 1.8's expander holds its own (the watch: the same) */
     i2c_device_config_t cfg = { .dev_addr_length = I2C_ADDR_BIT_LEN_7, .device_address = I2C_ADDR_EXPANDER, .scl_speed_hz = 400000 };
     i2c_master_dev_handle_t dev;
@@ -582,8 +639,12 @@ void display_port_sleep(void) {
 void display_port_wake(void) {
     display_port_flush_wait(NULL);
     if (!s_panel) return;
+#ifdef BOARD_TRIVIAPOD
+    if (!triviapod_panel_reset()) { ESP_LOGE(TAG, "TriviaPOD panel wake failed"); return; }
+#else
     if (!held_pins()) expander_power_up();
     else gpio_set_level(pin_tp_rst(), 1);           /* the touch chip is reporting again by the time the panel is up */
+#endif
     s_dark = true;                                  /* (dark again till the first frame after the wake) */
     esp_lcd_panel_reset(s_panel);
     esp_lcd_panel_init(s_panel);
