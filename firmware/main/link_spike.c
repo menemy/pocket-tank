@@ -70,7 +70,7 @@ static void on_recv(const esp_now_recv_info_t *info, const uint8_t *data, int le
     portEXIT_CRITICAL(&s_mux);
 }
 
-static void on_sent(const uint8_t *mac, esp_now_send_status_t st) {
+static void on_sent(const lp_send_info_t *mac, esp_now_send_status_t st) {
     (void)mac;
     if (st == ESP_NOW_SEND_SUCCESS) s_tx_ok++; else s_tx_fail++;
 }

@@ -5,6 +5,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "esp_now.h"
+#include "esp_idf_version.h"
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+typedef esp_now_send_info_t lp_send_info_t;
+#else
+typedef uint8_t lp_send_info_t;
+#endif
+
 #include "link.h"
 
 /* the bare radio (the spike uses it with its own callbacks) */
