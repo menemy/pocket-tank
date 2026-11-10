@@ -4,6 +4,7 @@
  * read/modify/write holds the same lock and preserves unrelated pins. */
 #include "board_triviapod.h"
 #include "battery_port.h"
+#include "tank_events.h"
 #include "board_pins.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -24,6 +25,8 @@ static const char *TAG = "triviapod";
 static i2c_master_dev_handle_t s_pm, s_io, s_tp;
 static SemaphoreHandle_t s_lock;
 static TaskHandle_t s_motor;
+static portMUX_TYPE s_haptic_lock = portMUX_INITIALIZER_UNLOCKED;
+static int64_t s_haptic_at;
 static bool s_ready, s_motor_enabled;
 static bool s_key_armed, s_key_down, s_key_candidate, s_key_long;
 static int64_t s_key_changed, s_key_at;
@@ -92,6 +95,23 @@ static void motor_task(void *arg) {
 }
 void triviapod_vibrate(unsigned ms) {
     if (s_motor && ms) xTaskNotify(s_motor, ms > 120 ? 120 : ms, eSetValueWithoutOverwrite);
+}
+/* The synchronous tank event listener must never wait for I2C or a task lock. */
+void triviapod_haptic(int event) {
+    unsigned ms;
+    switch (event) {
+    case TEV_FEED: ms = 25; break;
+    case TEV_SNIP: ms = 20; break;
+    case TEV_CONFIRM: ms = 35; break;
+    case TEV_WELCOME: ms = 60; break;
+    default: return;
+    }
+    int64_t now = esp_timer_get_time();
+    portENTER_CRITICAL(&s_haptic_lock);
+    bool ready = !s_haptic_at || now - s_haptic_at >= 200000;
+    if (ready) s_haptic_at = now;
+    portEXIT_CRITICAL(&s_haptic_lock);
+    if (ready) triviapod_vibrate(ms);
 }
 void triviapod_motor_stop(void) {
     if (!s_lock) return;

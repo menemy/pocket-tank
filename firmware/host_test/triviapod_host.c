@@ -6,6 +6,7 @@
 #include "host_esp.h"
 #include "board_triviapod.h"
 #include "battery_port.h"
+#include "tank_events.h"
 #include <assert.h>
 #include <math.h>
 #include <setjmp.h>
@@ -74,6 +75,17 @@ int main(void) {
     CHECK(chips[0x4F].reg[6] & 2); /* motor does not change the amplifier */
     triviapod_panel_sleep(); pulse(); CHECK(motor_delay == 0);
     CHECK(triviapod_panel_reset()); pulse(); CHECK(motor_delay == 120);
+    int n_haptic = notifications;
+    clock_us += 200000;
+    triviapod_haptic(TEV_FEED); CHECK(notifications == ++n_haptic && requested_ms == 25);
+    triviapod_haptic(TEV_SNIP); CHECK(notifications == n_haptic);
+    clock_us += 199999; triviapod_haptic(TEV_SNIP); CHECK(notifications == n_haptic);
+    clock_us++; triviapod_haptic(TEV_SNIP); CHECK(notifications == ++n_haptic && requested_ms == 20);
+    clock_us += 200000; triviapod_haptic(TEV_CONFIRM); CHECK(notifications == ++n_haptic && requested_ms == 35);
+    clock_us += 200000; triviapod_haptic(TEV_WELCOME); CHECK(notifications == ++n_haptic && requested_ms == 60);
+    clock_us += 200000;
+    triviapod_haptic(TEV_EAT); triviapod_haptic(TEV_BUBBLES); triviapod_haptic(TEV_WHEEL_TICK);
+    CHECK(notifications == n_haptic);
     mv(0x22, 3900); mv(0x24, 5000); chips[0x6E].reg[0x12] = 0;
     float frac; bool charging;
     CHECK(battery_port_read(&frac, &charging) && charging && frac > 0 && frac < 1);

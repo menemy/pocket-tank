@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <limits.h>
+typedef int portMUX_TYPE;
+#define portMUX_INITIALIZER_UNLOCKED 0
+#define portENTER_CRITICAL(p) ((void)(p))
+#define portEXIT_CRITICAL(p) ((void)(p))
 typedef int esp_err_t;
 typedef void *i2c_master_bus_handle_t;
 typedef struct host_i2c *i2c_master_dev_handle_t;

@@ -70,7 +70,9 @@ fit and director calibration controls remain available for measurement.
 - Power: short click sleeps and wakes; a 1.5-second hold requests shutdown.
   The PMIC retains its factory emergency double-click shutdown. GPIO12's
   active-low click interrupt and the blue key can wake deep sleep.
-- Haptics: a 35 ms pulse on existing CONFIRM and WELCOME tank events.
+- Haptics: feeding pellets gives 25 ms, a plant cut 20 ms, CONFIRM 35 ms,
+  and the first-run WELCOME 60 ms. Requests are at least 200 ms apart;
+  eating, bubbles and letter-wheel ticks produce no vibration.
   Pulse requests are capped at 120 ms; sleep disables further pulses until
   the panel wakes. Failed motor-stop writes are retried with new pulses disabled.
 

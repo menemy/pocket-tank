@@ -12,6 +12,7 @@ bool triviapod_touch_read(uint16_t *x, uint16_t *y, bool *down);
 bool triviapod_touch_sleep(void);
 bool triviapod_amp(bool on);
 void triviapod_vibrate(unsigned ms);
+void triviapod_haptic(int event);
 void triviapod_motor_stop(void);
 bool triviapod_feed_pressed(int64_t now);
 

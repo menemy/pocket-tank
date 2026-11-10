@@ -1147,7 +1147,7 @@ static int stage_pitch(int fish) {                 /* fry high, elder low */
 static void on_tank_event(int ev, int fish, void *ud) {
     (void)ud;
 #ifdef BOARD_TRIVIAPOD
-    if (ev == TEV_CONFIRM || ev == TEV_WELCOME) triviapod_vibrate(35);
+    triviapod_haptic(ev);
 #endif
     switch (ev) {
     case TEV_TAP:         audio_port_play(SND_TAP, AUDIO_PITCH_ONE); break;
