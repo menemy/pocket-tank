@@ -104,7 +104,6 @@ void triviapod_haptic_cue(int cue) {
     switch (cue) {
     case SND_FEED: ms = 45; break;
     case SND_SNIP: ms = 45; break;
-    case SND_WIPE: ms = 35; break;
     case SND_CARD_OPEN: ms = 45; break;
     case SND_CONFIRM: ms = 60; break;
     case SND_WELCOME: ms = 80; break;

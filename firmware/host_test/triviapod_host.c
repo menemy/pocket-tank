@@ -90,7 +90,7 @@ int main(void) {
     clock_us += 200000; triviapod_haptic_cue(SND_CONFIRM); CHECK(notifications == ++n_haptic && requested_ms == 60);
     clock_us += 200000; triviapod_haptic_cue(SND_WELCOME); CHECK(notifications == ++n_haptic && requested_ms == 80);
     clock_us += 200000; triviapod_haptic_cue(SND_CARD_OPEN); CHECK(notifications == ++n_haptic && requested_ms == 45);
-    clock_us += 200000; triviapod_haptic_cue(SND_WIPE); CHECK(notifications == ++n_haptic && requested_ms == 35);
+    triviapod_haptic_cue(SND_WIPE); CHECK(notifications == n_haptic);
     triviapod_haptic_cue(SND_MILESTONE); CHECK(notifications == ++n_haptic && requested_ms == 100 && notify_action == eSetValueWithOverwrite);
     triviapod_haptic_cue(SND_STAGE_UP); CHECK(notifications == ++n_haptic && requested_ms == 100);
     triviapod_haptic_cue(SND_ARRIVAL); CHECK(notifications == ++n_haptic && requested_ms == 100);

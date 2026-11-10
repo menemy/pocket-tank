@@ -73,12 +73,14 @@ fit and director calibration controls remain available for measurement.
   delayed IRQ for that same release is consumed once. GPIO12's
   active-low click interrupt and the blue key can wake deep sleep.
 - Haptics: feeding, a plant cut and opening a fish card give 45 ms;
-  wiping glass 35 ms; CONFIRM 60 ms; WELCOME 80 ms; each announced
+  CONFIRM 60 ms; WELCOME 80 ms; each announced
   achievement, growth stage and new arrival 100 ms. Motor PWM is 75%.
   Ordinary requests are at least 200 ms apart; achievement cues replace
   a pending ordinary pulse so a just-earned badge is not lost to the
   feeding or trimming cue that earned it. Eating, bubbles and letter-wheel
-  ticks produce no vibration. Haptics remain active with sound muted.
+  ticks and glass wiping produce no vibration. The owner disabled wiping
+  feedback because a small finger roll during a tap could trigger it.
+  Haptics remain active with sound muted.
   Pulse requests are capped at 120 ms; sleep disables further pulses until
   the panel wakes. Failed motor-stop writes are retried with new pulses disabled.
 
@@ -120,11 +122,13 @@ Local validation on 2026-11-10: all five firmware configurations built with
 ESP-IDF 5.5.5; all 368 simulator checks (92 per world) passed; host hardware,
 audio and inference checks passed. The five card/rename board sheets were
 generated and inspected. The initial install was subsequently flash-hash verified on the MAC-checked
-TriviaPOD, with a complete pre-install 32 MiB backup. The current device
-build is `6616bad`, including paced event haptics. Runtime logs show about
+TriviaPOD, with a complete pre-install 32 MiB backup. Runtime logs show about
 25 fps after the boot show, on-device advisor decisions, M5PM1 battery
-readings, and ES8311 playback power-up/idle transitions. Physical picture,
-touch, controls, audible sound and motor feel await owner confirmation.
+readings, and ES8311 playback power-up/idle transitions. The owner confirmed
+red-key single-press sleep/wake and the stronger motor feedback on build
+466a489. Glass-wiping haptics were then removed at the owner’s request.
+Precise touch calibration, sound levels, USB charge transitions and standby
+current have not been measured.
 QEMU was not run.
 
 The owner’s physical check found the rim GPIOs reversed from the initial
@@ -133,8 +137,8 @@ The feed input and BOOT/shelf/reset/wake input follow those pins.
 
 Hardware checks remain pending: full-circle picture and colors, accurate
 touch across the panel, both rim controls, sound at multiple volume levels,
-battery/USB state, a short motor pulse, and power-key sleep/wake including
-the twenty-minute deep-sleep transition. On the shared bench, do not open
+battery/USB state and long-duration sleep. Red-key sleep/wake and motor
+feedback have passed the owner’s short hardware check. On the shared bench, do not open
 a serial port, reset, erase or flash until the device's coordinator grants
 exclusive access. Save the current full flash image before the first write.
 

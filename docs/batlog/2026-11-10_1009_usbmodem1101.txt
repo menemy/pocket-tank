@@ -1,0 +1,12 @@
+# pocket-tank preflight 2026-11-10_1009 on /dev/cu.usbmodem1101
+I (383196) batlog: 1 samples (h:mm since the first | SoC | VBAT | bright | state | mA since previous)
+I (383197) batlog:     0:00 |  -1% |    0 mV | 153 | awake  | boot
+I (383201) batlog:   (SoC is 1% = 5 mAh; short awake windows are coarse, a night is not)
+I (387291) director: 0 pip    fry   age 0.4h size 0.51 hunger 4.4 energy 9.8 stress 1.2 curiosity 0.0 trust 4.3 social 0.797 (born 0.79) bold 0.138 (born 0.14) ms 13b  follow_friend at 131,318
+I (387297) director: 1 kelp   fry   age 0.4h size 0.50 hunger 2.0 energy 10.0 stress 0.0 curiosity 0.0 trust 3.9 social 0.162 (born 0.16) bold 0.739 (born 0.73) ms 133  rest at 160,332
+I (387313) director: pellets 1 | trickle on | ravenous 0 | night idle 386s | veg 0.03 0.04 0.03 | algae cells 2/572 | courting no | arrival -
+I (387326) director: sand dollars 29 (earned 29) | shop: - | colonies 3 | 304 cm trimmed
+I (387334) director: bed 0 fronds (x from 60, pitch 12): 0.04 0.03 0.04 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03
+I (387345) director: bed 1 fronds (x from 340, pitch 12): 0.03 0.03 0.03 0.03 0.05
+I (387352) director: bed 2 fronds (x from 242, pitch 12): 0.03 0.03 0.03 0.03 0.03 0.03 0.03 0.03
+I (387360) director: nursery bed -1 (a bed >= 0.12) | parked real tank: no (this IS the real tank)
