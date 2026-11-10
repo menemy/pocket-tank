@@ -161,7 +161,7 @@ bool triviapod_init(i2c_master_bus_handle_t bus) {
     if (!write_reg(s_io, 0x23, 0, 1) || !write_reg(s_io, 0x1B, 0, 2) || !io_bits(0x13, IO_USED, 0) ||
         !io_bits(0x05, IO_USED, IO_AUDIO | IO_LCD | IO_TOUCH | IO_OLED) || !io_bits(0x03, IO_USED, IO_USED)) return false;
     if (!triviapod_panel_reset()) return false;
-    gpio_config_t keys = { .pin_bit_mask = (1ULL << T_PIN_BLUE) | (1ULL << T_PIN_YELLOW) | (1ULL << T_PIN_PWR_IRQ), .mode = GPIO_MODE_INPUT,
+    gpio_config_t keys = { .pin_bit_mask = (1ULL << T_PIN_BLUE) | (1ULL << T_PIN_GREEN) | (1ULL << T_PIN_PWR_IRQ), .mode = GPIO_MODE_INPUT,
                           .pull_up_en = GPIO_PULLUP_ENABLE };
     if (gpio_config(&keys) != ESP_OK) return false;
     if (write_reg(s_io, 0x25, 2000, 2) && xTaskCreate(motor_task, "motor", 2048, NULL, 5, &s_motor) == pdPASS)
@@ -173,7 +173,7 @@ bool triviapod_init(i2c_master_bus_handle_t bus) {
 bool triviapod_feed_pressed(int64_t now) {
     static bool armed, down, candidate;
     static int64_t changed;
-    bool level = !gpio_get_level(T_PIN_YELLOW);
+    bool level = !gpio_get_level(T_PIN_GREEN);
     if (level != candidate) { candidate = level; changed = now; }
     if (now - changed < 30000) return false;
     if (!level) armed = true;

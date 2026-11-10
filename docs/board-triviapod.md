@@ -47,7 +47,7 @@ block is copied verbatim.
 | Motor | expander IO9, PWM1, 2 kHz |
 | M5PM1 power | 0x6E; VBAT 0x22, VIN 0x24, key 0x48; active-low IRQ on GPIO12 |
 | M5IOE1 expander | 0x4F; output modes 0x03, levels 0x05, open-drain 0x13 |
-| Rim keys | blue/right GPIO1, yellow/left GPIO2; active low |
+| Rim keys | blue at 10 o’clock GPIO1, green at 1 o’clock GPIO2; active low |
 
 The expander's IO numbers are one-based. Output changes preserve unrelated
 pins under a mutex shared by the display, audio and motor paths. Power
@@ -62,12 +62,12 @@ fit and director calibration controls remain available for measurement.
 ## Controls
 
 - Touch: the usual tank taps, holds, strokes and pages.
-- Blue/right: the upstream BOOT control. Double press opens MY TANKS;
+- Blue (10 o’clock): the upstream BOOT control. Double press opens MY TANKS;
   hold five seconds then tap the glass to request a reset, with the
   existing confirmation. On SETTINGS the same chord opens ADVANCED.
-- Yellow/left: three pellets at the usual feed spot, once per press,
+- Green (1 o’clock): three pellets at the usual feed spot, once per press,
   while the tank is visible. It does not feed through setup or an open page.
-- Power: short click sleeps and wakes; a 1.5-second hold requests shutdown.
+- Red power (7 o’clock): short click sleeps and wakes; a 1.5-second hold requests shutdown.
   The PMIC retains its factory emergency double-click shutdown. GPIO12's
   active-low click interrupt and the blue key can wake deep sleep.
 - Haptics: feeding pellets gives 25 ms, a plant cut 20 ms, CONFIRM 35 ms,
@@ -105,15 +105,23 @@ cc -O2 -std=c11 -Wall -Wextra -Werror -DBOARD_TRIVIAPOD \
 
 These cover transfer retries, unrelated expander pins, motor duration and
 sleep gating, raw touch bounds, invalid battery readings, short/long power
-presses, clicks between sleep polls, and yellow-key debounce. The existing
+presses, clicks between sleep polls, and green-key debounce. The existing
 host audio and inference harnesses, `make -C sim ARCH= check-all`, and
 `tools/board_sheet.py --selftest-card` cover the shared app.
 
 Local validation on 2026-11-10: all five firmware configurations built with
 ESP-IDF 5.5.5; all 368 simulator checks (92 per world) passed; host hardware,
 audio and inference checks passed. The five card/rename board sheets were
-generated and inspected. No serial port or physical device was accessed.
+generated and inspected. The initial install was subsequently flash-hash verified on the MAC-checked
+TriviaPOD, with a complete pre-install 32 MiB backup. The current device
+build is `6616bad`, including paced event haptics. Runtime logs show about
+25 fps after the boot show, on-device advisor decisions, M5PM1 battery
+readings, and ES8311 playback power-up/idle transitions. Physical picture,
+touch, controls, audible sound and motor feel await owner confirmation.
 QEMU was not run.
+
+The green-key identifier was renamed after the owner corrected the case
+colors; this is a naming-only change from the running `6616bad` image.
 
 Hardware checks remain pending: full-circle picture and colors, accurate
 touch across the panel, both rim controls, sound at multiple volume levels,
@@ -126,3 +134,7 @@ The active-low wake enum was checked against Espressif's
 [IDF 5.4.2 sleep API header](https://github.com/espressif/esp-idf/blob/v5.4.2/components/esp_hw_support/include/esp_sleep.h),
 which defines `ESP_EXT1_WAKEUP_ANY_LOW` for the ESP32-S3. An IDF 5.4 build
 itself has not been run on this machine.
+
+The owner corrected the case controls on 2026-11-10: blue at 10 o’clock,
+green at 1 o’clock, red power at 7 o’clock. These replace the earlier
+color/position descriptions in the hardware handoff.
