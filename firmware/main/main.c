@@ -74,7 +74,7 @@
  * be the one key the keeper ever presses - press to sleep, press to wake. */
 #ifdef BOARD_TRIVIAPOD
 #include "board_triviapod.h"
-#define BTN_SLEEP GPIO_NUM_1
+#define BTN_SLEEP T_PIN_BLUE
 #else
 #define BTN_SLEEP GPIO_NUM_0
 #endif
@@ -583,8 +583,15 @@ static void enter_sleep_for(int wake_after_s) {
          * two-stage change lasted exactly 3 minutes). Drop everything each
          * slice, then arm stage 2's own. */
         esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+#ifdef BOARD_TRIVIAPOD
+        bool blue_wake = triviapod_wake_pressed(why == ESP_SLEEP_WAKEUP_GPIO, 0);
+#endif
         int wake_key = battery_port_key_poll();
+#ifdef BOARD_TRIVIAPOD
+        if (blue_wake || wake_key) { pressed = true; break; }
+#else
         if (why == ESP_SLEEP_WAKEUP_GPIO || wake_key) { pressed = true; break; }
+#endif
     }
     if (pressed) {                              /* a quick wake: resume in place */
         keys_up_wait("the wake");                /* the wake press, still down (stuck: the tank comes back anyway) */
@@ -708,7 +715,11 @@ void device_poweroff(void) { enter_poweroff(); }   /* director `poweroff` */
    battery_port_key_poll answers 3 for one with no key-down edge before it */
 static void pwr_key_poll(int64_t now) {
     static int64_t last;
+#ifdef BOARD_TRIVIAPOD
+    if (now - last < 20000) return;
+#else
     if (now - last < 100000) return;
+#endif
     last = now;
     int k = battery_port_key_poll();
     if (!k) return;

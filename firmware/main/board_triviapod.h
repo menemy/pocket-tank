@@ -15,5 +15,6 @@ void triviapod_vibrate(unsigned ms);
 void triviapod_haptic(int event);
 void triviapod_motor_stop(void);
 bool triviapod_feed_pressed(int64_t now);
+bool triviapod_wake_pressed(bool gpio_wakeup, int key_event);
 
 #endif

@@ -47,7 +47,7 @@ block is copied verbatim.
 | Motor | expander IO9, PWM1, 2 kHz |
 | M5PM1 power | 0x6E; VBAT 0x22, VIN 0x24, key 0x48; active-low IRQ on GPIO12 |
 | M5IOE1 expander | 0x4F; output modes 0x03, levels 0x05, open-drain 0x13 |
-| Rim keys | blue at 10 o’clock GPIO1, green at 1 o’clock GPIO2; active low |
+| Rim keys | blue at 10 o’clock GPIO2, green at 1 o’clock GPIO1; active low |
 
 The expander's IO numbers are one-based. Output changes preserve unrelated
 pins under a mutex shared by the display, audio and motor paths. Power
@@ -68,7 +68,9 @@ fit and director calibration controls remain available for measurement.
 - Green (1 o’clock): three pellets at the usual feed spot, once per press,
   while the tank is visible. It does not feed through setup or an open page.
 - Red power (7 o’clock): short click sleeps and wakes; a 1.5-second hold requests shutdown.
-  The PMIC retains its factory emergency double-click shutdown. GPIO12's
+  The PMIC retains its factory emergency double-click shutdown. A live
+  debounced release handles short presses even without a click IRQ; a
+  delayed IRQ for that same release is consumed once. GPIO12's
   active-low click interrupt and the blue key can wake deep sleep.
 - Haptics: feeding pellets gives 25 ms, a plant cut 20 ms, CONFIRM 35 ms,
   and the first-run WELCOME 60 ms. Requests are at least 200 ms apart;
@@ -120,8 +122,9 @@ readings, and ES8311 playback power-up/idle transitions. Physical picture,
 touch, controls, audible sound and motor feel await owner confirmation.
 QEMU was not run.
 
-The green-key identifier was renamed after the owner corrected the case
-colors; this is a naming-only change from the running `6616bad` image.
+The owner’s physical check found the rim GPIOs reversed from the initial
+hardware handoff: green at 1 o’clock is GPIO1; blue at 10 o’clock is GPIO2.
+The feed input and BOOT/shelf/reset/wake input follow those pins.
 
 Hardware checks remain pending: full-circle picture and colors, accurate
 touch across the panel, both rim controls, sound at multiple volume levels,

@@ -61,8 +61,8 @@
 #define PIN_LCD_DATA3     45
 #define PIN_I2C_SDA       47
 #define PIN_I2C_SCL       48
-#define T_PIN_BLUE        1
-#define T_PIN_GREEN       2
+#define T_PIN_BLUE        2
+#define T_PIN_GREEN       1
 #define T_PIN_PWR_IRQ     12
 #else
 #define PIN_LCD_CS        12

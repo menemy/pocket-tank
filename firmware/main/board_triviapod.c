@@ -30,7 +30,8 @@ static int64_t s_haptic_at;
 static bool s_ready, s_motor_enabled;
 static bool s_key_armed, s_key_down, s_key_candidate, s_key_long;
 static int64_t s_key_changed, s_key_at;
-static unsigned s_clicks;
+static unsigned s_clicks, s_click_credits;
+static int64_t s_credit_at;
 static float s_fraction;
 static int s_mv, s_bat_state = BAT_ON_BATTERY;
 static int64_t s_sample_at;
@@ -211,15 +212,21 @@ void battery_port_key_clear(void) { battery_port_key_init(); }
 void battery_port_key_init(void) {
     s_key_armed = s_key_down = s_key_candidate = s_key_long = false;
     s_key_changed = esp_timer_get_time(); s_key_at = 0;
-    s_clicks = 0;
+    s_clicks = s_click_credits = 0;
     write_reg(s_pm, 0x42, 0, 1);
 }
 int battery_port_key_poll(void) {
-    uint8_t state, irq;
+    uint8_t state, irq = 0;
     int64_t now = esp_timer_get_time();
     if (!s_ready || !read_reg(s_pm, 0x48, &state, 1)) { s_key_changed = now; s_key_at = 0; return 0; }
-    if (read_reg(s_pm, 0x42, &irq, 1) && (irq & 5) && write_reg(s_pm, 0x42, 0, 1))
+    bool irq_ok = read_reg(s_pm, 0x42, &irq, 1);
+    if (irq_ok && (irq & 5) && write_reg(s_pm, 0x42, 0, 1))
         s_clicks += (irq & 1 ? 1 : 0) + (irq & 4 ? 2 : 0);
+    static int last_state = -1;
+    if (state != last_state || (irq_ok && (irq & 5))) {
+        ESP_LOGI(TAG, "power key: status %02x, irq %02x, armed %d", state, irq, s_key_armed);
+        last_state = state;
+    }
     bool down = state & 1;
     if (down != s_key_candidate) { s_key_candidate = down; s_key_changed = now; }
     if (!s_key_armed) {
@@ -231,16 +238,25 @@ int battery_port_key_poll(void) {
     if (down != s_key_down && now - s_key_changed >= 30000) {
         s_key_down = down;
         if (down) { s_key_at = now; s_key_long = false; }
-        else s_key_at = 0;
+        else {
+            s_key_at = 0;
+            s_click_credits++; s_credit_at = now;
+            if (!s_key_long) event = 1;
+        }
     }
     if (down && s_key_down && !s_key_at) s_key_at = now;
     if (down && s_key_down && s_key_at && !s_key_long && now - s_key_at >= 1500000) {
         s_key_long = true; event = 2;
     }
-    /* M5PM1 latches clicks after release, even between sleep polls.
-     * Short presses come only from this latch, never twice from the edges. */
+    /* The IRQ can arrive after a live release already asked for sleep.
+     * Spend it once; an unseen press between sleep polls still wakes. */
+    while (s_clicks && s_click_credits) { s_clicks--; s_click_credits--; }
+    if (s_click_credits && now - s_credit_at >= 500000) s_click_credits = 0;
     if (!down && !s_key_down && !event && s_clicks) { s_clicks--; event = 1; }
     return event;
+}
+bool triviapod_wake_pressed(bool gpio_wakeup, int key_event) {
+    return key_event || (gpio_wakeup && !gpio_get_level(T_PIN_BLUE));
 }
 bool battery_port_poweroff(void) {
     triviapod_motor_stop();

@@ -5,6 +5,7 @@
  */
 #include "host_esp.h"
 #include "board_triviapod.h"
+#include "board_pins.h"
 #include "battery_port.h"
 #include "tank_events.h"
 #include <assert.h>
@@ -60,6 +61,7 @@ static int poll(int ms, bool down, int clicks) {
 }
 static void pulse(void) { motor_waits = 0; motor_delay = 0; if (!setjmp(motor_return)) motor_fn(NULL); }
 int main(void) {
+    CHECK(T_PIN_BLUE == 2 && T_PIN_GREEN == 1);
     memset(keys, 1, sizeof keys);
     chips[0x4F].reg[5] = 1; chips[0x4F].reg[6] = 0x80;
     CHECK(triviapod_init((void *)1));
@@ -102,18 +104,22 @@ int main(void) {
     tp[2] = 0; CHECK(triviapod_touch_read(&x, &y, &down) && !down);
     battery_port_key_init(); CHECK(poll(40, false, 0) == 0);
     CHECK(poll(10, true, 0) == 0); CHECK(poll(40, true, 0) == 0);
-    CHECK(poll(10, false, 0) == 0); CHECK(poll(40, false, 0) == 0);
-    CHECK(poll(400, false, 1) == 1); CHECK(poll(1000, false, 0) == 0);
+    CHECK(poll(10, false, 0) == 0); CHECK(poll(40, false, 0) == 1);
+    CHECK(poll(400, false, 1) == 0); CHECK(poll(1000, false, 0) == 0);
     CHECK(poll(1000, false, 1) == 1); /* complete tap between sleep polls */
     CHECK(poll(1000, false, 0) == 0);
     CHECK(poll(10, true, 0) == 0); CHECK(poll(40, true, 0) == 0);
     CHECK(poll(1500, true, 0) == 2); CHECK(poll(100, true, 0) == 0);
     CHECK(poll(10, false, 0) == 0); CHECK(poll(40, false, 0) == 0);
-    keys[2] = 0; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000;
+    keys[1] = 0; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000;
     CHECK(!triviapod_feed_pressed(clock_us)); /* held at boot cannot feed */
-    keys[2] = 1; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000; CHECK(!triviapod_feed_pressed(clock_us));
-    keys[2] = 0; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000; CHECK(triviapod_feed_pressed(clock_us));
+    keys[1] = 1; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000; CHECK(!triviapod_feed_pressed(clock_us));
+    keys[1] = 0; CHECK(!triviapod_feed_pressed(clock_us)); clock_us += 40000; CHECK(triviapod_feed_pressed(clock_us));
     clock_us += 40000; CHECK(!triviapod_feed_pressed(clock_us));
+    keys[2] = 1;
+    CHECK(!triviapod_wake_pressed(true, 0)); /* the old click IRQ alone cannot re-wake */
+    CHECK(triviapod_wake_pressed(false, 1));
+    keys[2] = 0; CHECK(triviapod_wake_pressed(true, 0));
     CHECK(!lock_depth);
     printf("triviapod_host: %s\n", failures ? "FAILED" : "all checks passed");
     return failures != 0;
