@@ -24,6 +24,13 @@ jobs:
           # the dev repo does not track model/out; the public one does (the LLM selftest needs it)
           if [ -f model/out/model_q4.bin ]; then make -C sim -j"$(nproc)" check-all
           else echo "no model in this checkout: the LLM selftest is skipped"; make -C sim -j"$(nproc)" NOMODEL=1 check-all; fi
+      - name: Test TriviaPOD hardware contracts without a device
+        working-directory: firmware/host_test
+        run: |
+          cc -O2 -std=c11 -Wall -Wextra -Werror -DBOARD_TRIVIAPOD \
+            -Itriviapod_stubs -I../main -I../../common \
+            triviapod_host.c ../main/board_triviapod.c -o triviapod_host
+          ./triviapod_host
       - name: Test the audio mixer
         working-directory: firmware/host_test
         run: |

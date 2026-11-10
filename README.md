@@ -749,9 +749,14 @@ profile and per-decision inference timings, so performance work is
 measurable without instruments.
 
 **Other boards.** This repo supports those four boards, to keep the project small
-while it is young. Two community ports run the tank elsewhere. They are not
+while it is young. Community ports run the tank elsewhere. They are not
 built or tested here, and they may lag behind this repo:
 
+- This fork adds an experimental **M5Stack TriviaPOD TP-01-A** port
+  (ESP32-S3, round 466×466 CO5300, CST820 touch, ES8311 audio, M5PM1 power).
+  Build with `sdkconfig.triviapod`; [the port notes](docs/board-triviapod.md)
+  cover controls, hardware references and validation status. Source:
+  [menemy/pocket-tank, triviapod branch](https://github.com/menemy/pocket-tank/tree/triviapod).
 - [knoopx](https://github.com/knoopx) ported it to the Waveshare
   **ESP32-P4-WIFI6-Touch-LCD-4B** (4-inch 720×720 MIPI-DSI panel, GT911
   touch, ES8311 audio) in [their fork](https://github.com/knoopx/pocket-tank).
